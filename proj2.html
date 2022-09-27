@@ -1,0 +1,495 @@
+﻿<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html><head></head><body>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div class="container-fluid main-container">
+
+
+
+
+<div>
+
+
+
+<h1 class="title toc-ignore">proj2</h1>
+<h4 class="author">Tarun Guntaka</h4>
+<h4 class="date">2022-03-29</h4>
+
+</div>
+
+
+<div class="section level1">
+<h1>Statement of the problem</h1>
+<p>Find recent tweets about ukraine war, biden and also find what people
+think of it (sentimental analyses)</p>
+<div class="section level2">
+<h2>Installing required packages and API access</h2>
+<p>Here the twitter api is connected to R by access token</p>
+<pre class="r"><code>source(&quot;spro.R&quot;, echo = TRUE)</code></pre>
+<pre><code>## 
+## &gt; library(rtweet)</code></pre>
+<pre><code>## Warning: package &#39;rtweet&#39; was built under R version 4.1.3</code></pre>
+<pre><code>## 
+## &gt; library(dplyr)</code></pre>
+<pre><code>## Warning: package &#39;dplyr&#39; was built under R version 4.1.3</code></pre>
+<pre><code>## 
+## Attaching package: &#39;dplyr&#39;</code></pre>
+<pre><code>## The following objects are masked from &#39;package:stats&#39;:
+## 
+##     filter, lag</code></pre>
+<pre><code>## The following objects are masked from &#39;package:base&#39;:
+## 
+##     intersect, setdiff, setequal, union</code></pre>
+<pre><code>## 
+## &gt; library(sentimentr)</code></pre>
+<pre><code>## Warning: package &#39;sentimentr&#39; was built under R version 4.1.3</code></pre>
+<pre><code>## 
+## &gt; library(ggplot2)</code></pre>
+<pre><code>## Warning: package &#39;ggplot2&#39; was built under R version 4.1.3</code></pre>
+<pre><code>## 
+## &gt; library(SnowballC)
+## 
+## &gt; library(wordcloud)</code></pre>
+<pre><code>## Warning: package &#39;wordcloud&#39; was built under R version 4.1.3</code></pre>
+<pre><code>## Loading required package: RColorBrewer</code></pre>
+<pre><code>## 
+## &gt; library(tidytext)</code></pre>
+<pre><code>## Warning: package &#39;tidytext&#39; was built under R version 4.1.3</code></pre>
+<pre><code>## 
+## &gt; library(reshape2)</code></pre>
+<pre><code>## Warning: package &#39;reshape2&#39; was built under R version 4.1.3</code></pre>
+<pre><code>## 
+## &gt; library(stringr)</code></pre>
+<pre><code>## Warning: package &#39;stringr&#39; was built under R version 4.1.3</code></pre>
+<pre><code>## 
+## &gt; library(plotrix)
+## 
+## &gt; library(radarchart)</code></pre>
+<pre><code>## Warning: package &#39;radarchart&#39; was built under R version 4.1.3</code></pre>
+<pre><code>## 
+## &gt; library(textdata)</code></pre>
+<pre><code>## Warning: package &#39;textdata&#39; was built under R version 4.1.3</code></pre>
+<pre><code>## 
+## &gt; library(sjmisc)</code></pre>
+<pre><code>## Warning: package &#39;sjmisc&#39; was built under R version 4.1.3</code></pre>
+<pre><code>## 
+## &gt; api_key = &quot;B9YZQEksLsG3IoEmsFLrlHgxW&quot;
+## 
+## &gt; api_secret_key = &quot;kT9i2QyUJaNlgY5U5AFpnLbiRGrrM6tGkFC0Ebr0a1lzpgHbzD&quot;
+## 
+## &gt; access_token = &quot;1507488582826668036-LEiFO2d1OgO5G16lzTacl2YTHkBCN5&quot;
+## 
+## &gt; access_token_secret = &quot;R12fT5ow8hGF5oBqPxlQt1MkP3dd4vaOBqsAP1gaUfKn5&quot;
+## 
+## &gt; token = create_token(app = &quot;STAT611_R&quot;, consumer_key = api_key, 
+## +     consumer_secret = api_secret_key, access_token = access_token, 
+## +     access_ .... [TRUNCATED]</code></pre>
+</div>
+</div>
+<div class="section level1">
+<h1>Data Collection</h1>
+</div>
+<div class="section level1">
+<h1>Searching for tweets</h1>
+<p>tweets with ukraine, biden hashtags are grabbed using search_tweets
+function</p>
+<pre class="r"><code>#COVID = search_tweets(q = &quot;ukraine lang:en&quot;, n = 10000)
+#tweets.df &lt;- data.frame(matrix(unlist(COVID)),stringsAsFactors=FALSE)
+
+war = search_tweets(q = &quot;ukraine, biden lang:en&quot;, n = 15000)</code></pre>
+<pre><code>## Warning: Rate limit exceeded - 88</code></pre>
+<pre><code>## Warning: Rate limit exceeded</code></pre>
+<div class="section level2">
+<h2>Sample of 10 tweets and corresponding counts</h2>
+<p>This gives the random sample of size 10 by selecting only specific
+columns</p>
+<pre class="r"><code>ran10&lt;-war %&gt;% 
+  sample_n(10) %&gt;%
+  select(created_at, screen_name, text, favorite_count, retweet_count)
+
+print(ran10)</code></pre>
+<pre><code>## # A tibble: 10 x 5
+##    created_at          screen_name     text         favorite_count retweet_count
+##    &lt;dttm&gt;              &lt;chr&gt;           &lt;chr&gt;                 &lt;int&gt;         &lt;int&gt;
+##  1 2022-03-29 03:09:10 aabraha00422511 &quot;@CharlesPP~              1             0
+##  2 2022-03-29 00:02:55 TheRealBruceLe2 &quot;EXCLUSIVE:~              0          9585
+##  3 2022-03-29 00:17:34 Donna36046501   &quot;Doocy: \&quot;T~              0          3769
+##  4 2022-03-29 03:05:37 jenjamn515      &quot;President ~              0            46
+##  5 2022-03-29 02:50:38 UrakawaMark     &quot;CNN AND TH~              0             0
+##  6 2022-03-29 01:12:45 sparrowjess9    &quot;Former Ukr~              0            28
+##  7 2022-03-29 01:46:21 harryrbronx     &quot;PHOTOS: Bi~              0           126
+##  8 2022-03-29 02:23:48 e7johnny        &quot;World Blog~              0             0
+##  9 2022-03-29 01:14:18 evanrevans      &quot;Just remem~              0           565
+## 10 2022-03-29 02:52:29 gemma14485914   &quot;Biden has ~              0           499</code></pre>
+</div>
+<div class="section level2">
+<h2>Number of distinct users</h2>
+<p>This gives us the number of distinct users in these tweets</p>
+<pre class="r"><code>n_distinct(war$user_id) #distinct users</code></pre>
+<pre><code>## [1] 11699</code></pre>
+</div>
+<div class="section level2">
+<h2>Top 10 location of the tweets</h2>
+<p>This gives us the top 10 locations of the tweets</p>
+<pre class="r"><code>t5&lt;-war %&gt;% 
+  filter(!is.na(place_full_name)) %&gt;%  
+  count(place_full_name, sort = TRUE) %&gt;% 
+  top_n(5) #top 5 locations </code></pre>
+<pre><code>## Selecting by n</code></pre>
+<pre class="r"><code>print(t5)</code></pre>
+<pre><code>## # A tibble: 23 x 2
+##    place_full_name               n
+##    &lt;chr&gt;                     &lt;int&gt;
+##  1 Manhattan, NY                 2
+##  2 Amityville, NY                1
+##  3 Anchorage, AK                 1
+##  4 Blasdell, NY                  1
+##  5 Charlotte, NC                 1
+##  6 District of Columbia, USA     1
+##  7 Edmond, OK                    1
+##  8 Florida, USA                  1
+##  9 Hillsborough, NC              1
+## 10 Irvine, CA                    1
+## # ... with 13 more rows</code></pre>
+</div>
+<div class="section level2">
+<h2>Most frequently shared link</h2>
+<p>This gives the most frequently shared link in these tweets</p>
+<pre class="r"><code>FSL&lt;-war %&gt;% 
+  filter(!is.na(urls_expanded_url)) %&gt;% 
+  count(urls_expanded_url, sort = TRUE) %&gt;% 
+  top_n(5)</code></pre>
+<pre><code>## Selecting by n</code></pre>
+<pre class="r"><code>print(FSL$urls_expanded_url)</code></pre>
+<pre><code>## [[1]]
+## [1] &quot;https://www.foxnews.com/politics/photos-biden-caught-using-cue-cards-in-trying-to-paper-over-ukraine-gaffe-about-ousting-putin&quot;
+## 
+## [[2]]
+## [1] &quot;https://www.washingtonpost.com/opinions/2022/03/28/biden-putin-power-russia-ukraine-right/?tid=ss_tw&quot;
+## 
+## [[3]]
+## [1] &quot;https://theleoterrell.com/former-cbp-head-slams-biden-for-prioritizing-ukraine-border-over-americas/&quot;
+## 
+## [[4]]
+## [1] &quot;https://www.cnn.com/2022/03/28/politics/biden-putin-ukraine-russia/index.html&quot;
+## 
+## [[5]]
+## [1] &quot;https://go.usa.gov/xzHbg&quot;</code></pre>
+</div>
+<div class="section level2">
+<h2>Time series plot of tweets</h2>
+<p>This plot shows the number of tweets per minute</p>
+<pre class="r"><code>ts_plot(war, &quot;hours&quot;) +
+  labs(x = NULL, y = NULL,
+       title = &quot;Frequency of tweets with ukraine, biden words&quot;,
+       subtitle = paste0(format(min(war$created_at), &quot;%d %B %Y&quot;), &quot; to &quot;, format(max(war$created_at),&quot;%d %B %Y&quot;)),
+       caption = &quot;Data collected from Twitter&quot;) +
+  theme_minimal()</code></pre>
+<p><img src="javascript://" width="672"/></p>
+</div>
+</div>
+<div class="section level1">
+<h1>Sentimental analyses</h1>
+<div class="section level2">
+<h2>Tokenize tweet text into words for further pre-processing</h2>
+<pre class="r"><code>remove_reg &lt;- &quot;&amp;amp;|&amp;lt;|&amp;gt;&quot; 
+newstops &lt;- c(&quot;ukrainewar&quot;,&quot;#standwithukraine&quot;,&quot;russia&quot;,&quot;usa&quot;,&quot;t.co&quot;,&quot;war&quot;,&quot;putin&quot;,&quot;nato&quot;,&quot;ukrainerussiawar&quot;,&quot;#russia&quot;,&quot;#usa&quot;,&quot;#war&quot;,&quot;#putin&quot;,&quot;#nato&quot;,&quot;#ukrainerussiawar&quot;,&quot;#ukraine&quot;,&quot;#biden&quot;,&quot;#news&quot;,&quot;#ukrainewar&quot;,&quot;#kyiv&quot;,&quot;kyiv&quot;,&quot;#ukraina&quot;,&quot;#zelensky&quot;,&quot;biden&quot;,&quot;ukraine&quot;) #hashtags that need to be removed
+
+tidy_tweets &lt;- war %&gt;%  
+  mutate(text = str_remove_all(text, remove_reg)) %&gt;%   #remove regular expression
+  unnest_tokens(word, text, token = &#39;tweets&#39;,strip_url = TRUE) %&gt;%  #work tokenizations
+  filter(!word %in% stop_words$word,  #remove stopwords
+         !word %in% str_remove_all(stop_words$word, &quot;&#39;&quot;),
+         !word %in% newstops,  #remove those hashtags
+         str_detect(word, &quot;[a-z]&quot;))</code></pre>
+<pre><code>## Using `to_lower = TRUE` with `token = &#39;tweets&#39;` may not preserve URLs.</code></pre>
+</div>
+</div>
+<div class="section level1">
+<h1>Most frequent words global</h1>
+<pre class="r"><code>#get words and their frequency
+frequency_global &lt;- tidy_tweets %&gt;% count(word, sort=T) 
+#get the top 20
+frequency_global %&gt;% top_n(20)</code></pre>
+<pre><code>## Selecting by n</code></pre>
+<div>
+
+</div>
+</div>
+<div class="section level1">
+<h1>Word cloud global</h1>
+<pre class="r"><code>wordcloud(frequency_global$word,frequency_global$n, min.freq=20, scale=c(2.5, .5), random.order=FALSE, rot.per=0.35, colors=brewer.pal(8, &quot;Dark2&quot;),max.words = 100) #max words = 100 </code></pre>
+<p><img src="javascript://" width="672"/>
+# Most frequent words US</p>
+<pre class="r"><code>#get cleaned tweets that are located in the US
+tidy_us &lt;- tidy_tweets[is.na(tidy_tweets$country_code)==F &amp; tidy_tweets$country_code == &quot;US&quot;, ]
+
+#get words and their frequency
+frequency_us &lt;- tidy_us %&gt;% count(word, sort=T)
+#get the top 10
+frequency_us %&gt;% top_n(10)</code></pre>
+<pre><code>## Selecting by n</code></pre>
+<div>
+
+</div>
+</div>
+<div class="section level1">
+<h1>Word cloud US</h1>
+<pre class="r"><code>wordcloud(frequency_us$word,frequency_us$n, min.freq=20, scale=c(2.5, .5), random.order=FALSE, rot.per=0.35, colors=brewer.pal(8, &quot;Dark2&quot;),max.words = 100)</code></pre>
+<p><img src="javascript://" width="672"/></p>
+</div>
+<div class="section level1">
+<h1>Postive negative sentiment analysis</h1>
+<pre class="r"><code>tweets_bing&lt;-tidy_tweets%&gt;% 
+  # Implement sentiment analysis using the &quot;bing&quot; lexicon
+  inner_join(get_sentiments(&quot;bing&quot;)) </code></pre>
+<pre><code>## Joining, by = &quot;word&quot;</code></pre>
+<pre class="r"><code>perc&lt;-tweets_bing %&gt;% 
+  count(sentiment)%&gt;% #count sentiment
+  mutate(total=sum(n)) %&gt;% #get sum
+  group_by(sentiment) %&gt;% #group by sentiment
+  mutate(percent=round(n/total,2)*100) %&gt;% #get the proportion
+  ungroup()
+
+label &lt;-c( paste(perc$percent[1],&#39;%&#39;,&#39; - &#39;,perc$sentiment[1],sep=&#39;&#39;),#create label
+     paste(perc$percent[2],&#39;%&#39;,&#39; - &#39;,perc$sentiment[2],sep=&#39;&#39;))
+
+pie3D(perc$percent,labels=label,labelcex=1.1,explode= 0.1, 
+      main=&quot;Worldwide Sentiment&quot;) #create a pie chart</code></pre>
+<p><img src="javascript://" width="672"/></p>
+</div>
+<div class="section level1">
+<h1>Sentiment word frequency</h1>
+<pre class="r"><code>top_words &lt;- tweets_bing %&gt;%
+  # Count by word and sentiment
+  count(word, sentiment) %&gt;%
+  group_by(sentiment) %&gt;% #group ny sentiment
+  # Take the top 10 for each sentiment
+  top_n(10) %&gt;%
+  ungroup() %&gt;%
+  # Make word a factor in order of n
+  mutate(word = reorder(word, n))</code></pre>
+<pre><code>## Selecting by n</code></pre>
+<pre class="r"><code>#plot the result
+ggplot(top_words, aes(word, n, fill = sentiment)) +
+  geom_col(show.legend = FALSE) +
+  geom_text(aes(label = n, hjust=1), size = 3.5, color = &quot;black&quot;) +
+  facet_wrap(~sentiment, scales = &quot;free&quot;) +  
+  coord_flip() +
+  ggtitle(&quot;Most Common Positive and Negative words (Global)&quot;) + 
+  theme(plot.title = element_text(size = 14, face = &quot;bold&quot;,hjust = 0.5))</code></pre>
+<p><img src="javascript://" width="672"/></p>
+</div>
+<div class="section level1">
+<h1>USA Sentiment word frequency</h1>
+<pre class="r"><code>top_words_us &lt;- tidy_us %&gt;%
+  # Implement sentiment analysis using the &quot;bing&quot; lexicon
+  inner_join(get_sentiments(&quot;bing&quot;)) %&gt;%
+  # Count by word and sentiment
+  count(word, sentiment) %&gt;%
+  group_by(sentiment) %&gt;%
+  # Take the top 10 for each sentiment
+  top_n(10) %&gt;%
+  ungroup() %&gt;%
+  # Make word a factor in order of n
+  mutate(word = reorder(word, n))</code></pre>
+<pre><code>## Joining, by = &quot;word&quot;
+## Selecting by n</code></pre>
+<pre class="r"><code>#plot the result
+ggplot(top_words_us, aes(word, n, fill = sentiment)) +
+  geom_col(show.legend = FALSE) +
+  geom_text(aes(label = n, hjust=1), size = 3.5, color = &quot;black&quot;) +
+  facet_wrap(~sentiment, scales = &quot;free&quot;) +  
+  coord_flip() +
+  ggtitle(&quot;Most common positive and negative words (US)&quot;) + 
+  theme(plot.title = element_text(size = 14, face = &quot;bold&quot;,hjust = 0.5)) </code></pre>
+<p><img src="javascript://" width="672"/></p>
+</div>
+<div class="section level1">
+<h1>NRC Emotional Lexicon</h1>
+<pre class="r"><code>tidy_tweets %&gt;%
+  # implement sentiment analysis using the &quot;nrc&quot; lexicon
+  inner_join(get_sentiments(&quot;nrc&quot;)) %&gt;%
+  # remove &quot;positive/negative&quot; sentiments
+  filter(!sentiment %in% c(&quot;positive&quot;, &quot;negative&quot;)) %&gt;%
+  #get the frequencies of sentiments
+  count(sentiment,sort = T) %&gt;% 
+  #calculate the proportion
+  mutate(percent=100*n/sum(n)) %&gt;%
+  select(sentiment, percent) %&gt;%
+  #plot the result
+  chartJSRadar(showToolTipLabel = TRUE, main = &quot;NRC Radar&quot;)</code></pre>
+<pre><code>## Joining, by = &quot;word&quot;</code></pre>
+<canvas class="chartJSRadar html-widget" width="672" height="480"></canvas>
+
+</div>
+<div class="section level1">
+<h1>Sentence level sentimental analysis #Trump</h1>
+<pre class="r"><code>#get tweets that contain &quot;trump&quot;
+trump&lt;-war[sapply(1:nrow(war), function(x) str_contains(tolower(war$text[x]), &quot;trump&quot;)),]
+#View(trump$text)
+head(trump$text)</code></pre>
+<pre><code>## [1] &quot;Bill Maher: Why Putin invaded Ukraine under Biden, not Trump, is &#39;worth asking&#39; https://t.co/20PpQ23RIQ #FoxNews&quot;                                                                                                                                                                              
+## [2] &quot;“Will smith slap “\nDistraction hunter Biden laptop,Trump lawsuit against Hillary/election /John podesta &amp;amp; others,C.Thomas wife’s leaked text about Russia ,Ukraine and Durham #ThankMeLater #WakeUp this is why trump stating whole in 1 #Detail #seebetweenthelines&quot;                     
+## [3] &quot;@oneunderscore__ @slpng_giants So the Trump DOJ gave money to Hunter Biden to build bio labs in Ukraine? That’s their story?&quot;                                                                                                                                                                  
+## [4] &quot;Bob Good may claim that he supports the Ukrainian people, but they will not forget how Good voted against the impeachment of Donald Trump for conditioning security aid to Ukraine on opening political investigations into President Biden.&quot;                                                  
+## [5] &quot;REMINDER: While Cry Baby Biden whines about \&quot;Putin destroying Ukraine with missiles\&quot;, Pres. Trump has focused for months on the REAL threat:\n\n\&quot;The harsh policies of far left lunatic Justin Trudeau [have] destroyed Canada with insane Covid mandates.\&quot;\n\n/s\nhttps://t.co/VlcOPJhTgG&quot;
+## [6] &quot;The media is losing it over Biden correctly stating Putin “cannot remain in power”\n\nAll while the media continues to purposefully forget Trump has done business with Russian oligarchs for years and weakened Ukraine while in office.&quot;</code></pre>
+<div class="section level2">
+<h2>Average sentiment score for each sentence</h2>
+<pre class="r"><code>sentiment_trump &lt;- sentiment_by(get_sentences(trump$text))
+summary(sentiment_trump$ave_sentiment)</code></pre>
+<pre><code>##     Min.  1st Qu.   Median     Mean  3rd Qu.     Max. 
+## -0.69606 -0.25482 -0.13502 -0.10491  0.01094  0.53079</code></pre>
+</div>
+<div class="section level2">
+<h2>plot of the score distribution</h2>
+<pre class="r"><code>ggplot(sentiment_trump,aes(ave_sentiment)) +
+  geom_histogram(bins = 50) + 
+  labs(title = &quot;Sentiment Histogram of Tweets that Contain &#39;Trump&#39; &quot;, x = &quot;Sentiment Score&quot;) +
+  theme_bw() +
+  theme(plot.title = element_text(size = 14, face = &quot;bold&quot;,hjust = 0.5)) +
+   geom_vline(xintercept = 0, color = &quot;red&quot;)</code></pre>
+<p><img src="javascript://" width="672"/></p>
+</div>
+</div>
+<div class="section level1">
+<h1>Sentence level sentimental analysis #Supporting</h1>
+<pre class="r"><code>support&lt;-war[sapply(1:nrow(war), function(x) str_contains(tolower(war$text[x]), &quot;supporting&quot;)),]
+#View(support$text)
+head(support$text)</code></pre>
+<pre><code>## [1] &quot;Concern about Biden&#39;s statement about Putin not remaining in power is overblown. The real worry is his admin is not clear on what it hopes to achieve in supporting Ukraine. Without US leadership, the EU, NATO, and the rest will lose their nerve at the first opportunity. 1/13&quot;
+## [2] &quot;Concern about Biden&#39;s statement about Putin not remaining in power is overblown. The real worry is his admin is not clear on what it hopes to achieve in supporting Ukraine. Without US leadership, the EU, NATO, and the rest will lose their nerve at the first opportunity. 1/13&quot;
+## [3] &quot;Supporting Ukraine 100%, as Biden says he does, means giving them what they need and doing what needs to be done to enable Ukraine to win this war, not simply survive until Putin consolidates his occupation grip, commits more war crimes, &amp;amp; reloads for next time. 3/13&quot;    
+## [4] &quot;Concern about Biden&#39;s statement about Putin not remaining in power is overblown. The real worry is his admin is not clear on what it hopes to achieve in supporting Ukraine. Without US leadership, the EU, NATO, and the rest will lose their nerve at the first opportunity. 1/13&quot;
+## [5] &quot;Supporting Ukraine 100%, as Biden says he does, means giving them what they need and doing what needs to be done to enable Ukraine to win this war, not simply survive until Putin consolidates his occupation grip, commits more war crimes, &amp;amp; reloads for next time. 3/13&quot;    
+## [6] &quot;Concern about Biden&#39;s statement about Putin not remaining in power is overblown. The real worry is his admin is not clear on what it hopes to achieve in supporting Ukraine. Without US leadership, the EU, NATO, and the rest will lose their nerve at the first opportunity. 1/13&quot;</code></pre>
+<div class="section level2">
+<h2>Average sentiment score for each sentence</h2>
+<pre class="r"><code># get average sentiment score for each sentence
+sentiment_support &lt;- sentiment_by(get_sentences(support$text))
+
+summary(sentiment_support$ave_sentiment)</code></pre>
+<pre><code>##     Min.  1st Qu.   Median     Mean  3rd Qu.     Max. 
+## -0.76292 -0.07891 -0.07891 -0.07357 -0.07891  0.13457</code></pre>
+</div>
+<div class="section level2">
+<h2>plot of the score distribution</h2>
+<pre class="r"><code>ggplot(sentiment_support,aes(ave_sentiment)) +
+  geom_histogram(bins = 50) + 
+  labs(title = &quot;Sentiment Histogram of Tweets that Contain &#39;Supporting&#39; &quot;, x = &quot;Sentiment Score&quot;) +
+  theme_bw() +
+  theme(plot.title = element_text(size = 14, face = &quot;bold&quot;,hjust = 0.5)) +
+   geom_vline(xintercept = 0, color = &quot;red&quot;)</code></pre>
+<p><img src="javascript://" width="672"/></p>
+</div>
+</div>
+<div class="section level1">
+<h1>Conclusions</h1>
+<pre><code>As per the data, most of the tweets are representing negativity because of the ongoing Russian-Ukraine war. It is also reflected in the NRC emotional chart where fear, trust, and anger have higher frequencies compared to others. The fear is due to the missiles shelling on Ukraine where trust is they may have belief in world peace. 
+
+The primary source of negativity not only comes from Ukraine war, many people around the world are concerned about their countries as Russia could extend the war beyond Ukraine and invade other countries. Also in the US, many people are against Biden, supporting the Trump administration. Not only in the US, but we can see many people from other countries are also supporting the trump administration. 
+
+The Supporting word is used most often because many people are coming forward in order to help refugees and provide sufficient fundraising for them. </code></pre>
+</div>
+<div class="section level1">
+<h1>Discussions</h1>
+<pre><code>  Since this data is collected in real-time, the analyses may differ every day according to several factors. Although we can see many of these tweets show that people are concerned about the war. The analysis is also limited in that the project focuses on tweets that are in the English language and thus fails to capture possible topics and sentiments of tweets in other languages. Future research should collect data over a period that helps to evaluate the exact situation.</code></pre>
+</div>
+
+
+
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<script type="module" src="https://s.brightspace.com/lib/bsi/20.22.9-241/unbundled/mathjax.js"></script><script type="text/javascript">document.addEventListener('DOMContentLoaded', function() {
+					if (document.querySelector('math') || /\$\$|\\\(|\\\[|\\begin{|\\ref{|\\eqref{/.test(document.body.innerHTML)) {
+						document.querySelectorAll('mspace[linebreak="newline"]').forEach(elm => {
+							elm.setAttribute('style', 'display: block; height: 0.5rem;');
+						});
+
+						window.D2L.MathJax.loadMathJax({
+							'outputScale': 1.3,
+							'renderLatex': false
+						});
+					}
+				});</script><script type="module" src="https://s.brightspace.com/lib/bsi/20.22.9-241/unbundled/prism.js"></script><script type="text/javascript">document.addEventListener('DOMContentLoaded', function() {
+					document.querySelectorAll('.d2l-code').forEach(code => {
+						window.D2L.Prism.formatCodeElement(code);
+					});
+				});</script></body></html>

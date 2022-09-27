@@ -1,0 +1,296 @@
+---
+title: "proj2"
+author: "Tarun Guntaka"
+date: '2022-03-29'
+output:
+  html_document:
+    df_print: paged
+---
+# Statement of the problem 
+
+Find recent tweets about ukraine war, biden and also find what people think of it (sentimental analyses)
+
+## Installing required packages and API access
+
+Here the twitter api is connected to R by access token
+
+```{r}
+source("spro.R", echo = TRUE)
+```
+
+# Data Collection
+
+# Searching for tweets 
+
+tweets with ukraine, biden hashtags are grabbed using search_tweets function
+
+```{r}
+#COVID = search_tweets(q = "ukraine lang:en", n = 10000)
+#tweets.df <- data.frame(matrix(unlist(COVID)),stringsAsFactors=FALSE)
+
+war = search_tweets(q = "ukraine, biden lang:en", n = 15000)
+
+```
+
+
+## Sample of 10 tweets and corresponding counts
+
+This gives the random sample of size 10 by selecting only specific columns
+
+```{r}
+ran10<-war %>% 
+  sample_n(10) %>%
+  select(created_at, screen_name, text, favorite_count, retweet_count)
+
+print(ran10)
+```
+
+
+## Number of distinct users 
+
+This gives us the number of distinct users in these tweets 
+
+```{r}
+n_distinct(war$user_id) #distinct users
+```
+
+## Top 10 location of the tweets
+
+This gives us the top 10 locations of the tweets 
+
+```{r}
+t5<-war %>% 
+  filter(!is.na(place_full_name)) %>%  
+  count(place_full_name, sort = TRUE) %>% 
+  top_n(5) #top 5 locations 
+
+print(t5)
+```
+
+
+## Most frequently shared link
+
+This gives the most frequently shared link in these tweets 
+
+```{r}
+FSL<-war %>% 
+  filter(!is.na(urls_expanded_url)) %>% 
+  count(urls_expanded_url, sort = TRUE) %>% 
+  top_n(5)
+print(FSL$urls_expanded_url)
+```
+
+
+## Time series plot of tweets 
+
+This plot shows the number of tweets per minute
+
+```{r}
+ts_plot(war, "hours") +
+  labs(x = NULL, y = NULL,
+       title = "Frequency of tweets with ukraine, biden words",
+       subtitle = paste0(format(min(war$created_at), "%d %B %Y"), " to ", format(max(war$created_at),"%d %B %Y")),
+       caption = "Data collected from Twitter") +
+  theme_minimal()
+```
+
+# Sentimental analyses 
+
+## Tokenize tweet text into words for further pre-processing
+```{r}
+
+remove_reg <- "&amp;|&lt;|&gt;" 
+newstops <- c("ukrainewar","#standwithukraine","russia","usa","t.co","war","putin","nato","ukrainerussiawar","#russia","#usa","#war","#putin","#nato","#ukrainerussiawar","#ukraine","#biden","#news","#ukrainewar","#kyiv","kyiv","#ukraina","#zelensky","biden","ukraine") #hashtags that need to be removed
+
+tidy_tweets <- war %>%  
+  mutate(text = str_remove_all(text, remove_reg)) %>%   #remove regular expression
+  unnest_tokens(word, text, token = 'tweets',strip_url = TRUE) %>%  #work tokenizations
+  filter(!word %in% stop_words$word,  #remove stopwords
+         !word %in% str_remove_all(stop_words$word, "'"),
+         !word %in% newstops,  #remove those hashtags
+         str_detect(word, "[a-z]"))
+```
+
+# Most frequent words global 
+
+```{r}
+#get words and their frequency
+frequency_global <- tidy_tweets %>% count(word, sort=T) 
+#get the top 20
+frequency_global %>% top_n(20)
+```
+# Word cloud global
+
+```{r}
+wordcloud(frequency_global$word,frequency_global$n, min.freq=20, scale=c(2.5, .5), random.order=FALSE, rot.per=0.35, colors=brewer.pal(8, "Dark2"),max.words = 100) #max words = 100 
+```
+# Most frequent words US
+
+```{r}
+#get cleaned tweets that are located in the US
+tidy_us <- tidy_tweets[is.na(tidy_tweets$country_code)==F & tidy_tweets$country_code == "US", ]
+
+#get words and their frequency
+frequency_us <- tidy_us %>% count(word, sort=T)
+#get the top 10
+frequency_us %>% top_n(10)
+```
+# Word cloud US
+```{r}
+wordcloud(frequency_us$word,frequency_us$n, min.freq=20, scale=c(2.5, .5), random.order=FALSE, rot.per=0.35, colors=brewer.pal(8, "Dark2"),max.words = 100)
+```
+
+
+# Postive negative sentiment analysis 
+
+```{r}
+tweets_bing<-tidy_tweets%>% 
+  # Implement sentiment analysis using the "bing" lexicon
+  inner_join(get_sentiments("bing")) 
+
+perc<-tweets_bing %>% 
+  count(sentiment)%>% #count sentiment
+  mutate(total=sum(n)) %>% #get sum
+  group_by(sentiment) %>% #group by sentiment
+  mutate(percent=round(n/total,2)*100) %>% #get the proportion
+  ungroup()
+
+label <-c( paste(perc$percent[1],'%',' - ',perc$sentiment[1],sep=''),#create label
+     paste(perc$percent[2],'%',' - ',perc$sentiment[2],sep=''))
+
+pie3D(perc$percent,labels=label,labelcex=1.1,explode= 0.1, 
+      main="Worldwide Sentiment") #create a pie chart
+
+```
+
+# Sentiment word frequency 
+
+```{r}
+top_words <- tweets_bing %>%
+  # Count by word and sentiment
+  count(word, sentiment) %>%
+  group_by(sentiment) %>% #group ny sentiment
+  # Take the top 10 for each sentiment
+  top_n(10) %>%
+  ungroup() %>%
+  # Make word a factor in order of n
+  mutate(word = reorder(word, n))
+
+#plot the result
+ggplot(top_words, aes(word, n, fill = sentiment)) +
+  geom_col(show.legend = FALSE) +
+  geom_text(aes(label = n, hjust=1), size = 3.5, color = "black") +
+  facet_wrap(~sentiment, scales = "free") +  
+  coord_flip() +
+  ggtitle("Most Common Positive and Negative words (Global)") + 
+  theme(plot.title = element_text(size = 14, face = "bold",hjust = 0.5))
+```
+
+# USA Sentiment word frequency
+```{r}
+top_words_us <- tidy_us %>%
+  # Implement sentiment analysis using the "bing" lexicon
+  inner_join(get_sentiments("bing")) %>%
+  # Count by word and sentiment
+  count(word, sentiment) %>%
+  group_by(sentiment) %>%
+  # Take the top 10 for each sentiment
+  top_n(10) %>%
+  ungroup() %>%
+  # Make word a factor in order of n
+  mutate(word = reorder(word, n))
+
+#plot the result
+ggplot(top_words_us, aes(word, n, fill = sentiment)) +
+  geom_col(show.legend = FALSE) +
+  geom_text(aes(label = n, hjust=1), size = 3.5, color = "black") +
+  facet_wrap(~sentiment, scales = "free") +  
+  coord_flip() +
+  ggtitle("Most common positive and negative words (US)") + 
+  theme(plot.title = element_text(size = 14, face = "bold",hjust = 0.5)) 
+```
+
+# NRC Emotional Lexicon    
+
+```{r}
+tidy_tweets %>%
+  # implement sentiment analysis using the "nrc" lexicon
+  inner_join(get_sentiments("nrc")) %>%
+  # remove "positive/negative" sentiments
+  filter(!sentiment %in% c("positive", "negative")) %>%
+  #get the frequencies of sentiments
+  count(sentiment,sort = T) %>% 
+  #calculate the proportion
+  mutate(percent=100*n/sum(n)) %>%
+  select(sentiment, percent) %>%
+  #plot the result
+  chartJSRadar(showToolTipLabel = TRUE, main = "NRC Radar")
+```
+
+
+# Sentence level sentimental analysis #Trump
+
+```{r}
+#get tweets that contain "trump"
+trump<-war[sapply(1:nrow(war), function(x) str_contains(tolower(war$text[x]), "trump")),]
+#View(trump$text)
+head(trump$text)
+```
+
+## Average sentiment score for each sentence 
+
+```{r}
+sentiment_trump <- sentiment_by(get_sentences(trump$text))
+summary(sentiment_trump$ave_sentiment)
+```
+
+## plot of the score distribution 
+
+```{r}
+ggplot(sentiment_trump,aes(ave_sentiment)) +
+  geom_histogram(bins = 50) + 
+  labs(title = "Sentiment Histogram of Tweets that Contain 'Trump' ", x = "Sentiment Score") +
+  theme_bw() +
+  theme(plot.title = element_text(size = 14, face = "bold",hjust = 0.5)) +
+   geom_vline(xintercept = 0, color = "red")
+```
+
+# Sentence level sentimental analysis #Supporting
+
+```{r}
+support<-war[sapply(1:nrow(war), function(x) str_contains(tolower(war$text[x]), "supporting")),]
+#View(support$text)
+head(support$text)
+```
+## Average sentiment score for each sentence 
+
+```{r}
+# get average sentiment score for each sentence
+sentiment_support <- sentiment_by(get_sentences(support$text))
+
+summary(sentiment_support$ave_sentiment)
+```
+## plot of the score distribution 
+
+```{r}
+ggplot(sentiment_support,aes(ave_sentiment)) +
+  geom_histogram(bins = 50) + 
+  labs(title = "Sentiment Histogram of Tweets that Contain 'Supporting' ", x = "Sentiment Score") +
+  theme_bw() +
+  theme(plot.title = element_text(size = 14, face = "bold",hjust = 0.5)) +
+   geom_vline(xintercept = 0, color = "red")
+```
+
+
+# Conclusions 
+
+    As per the data, most of the tweets are representing negativity because of the ongoing Russian-Ukraine war. It is also reflected in the NRC emotional chart where fear, trust, and anger have higher frequencies compared to others. The fear is due to the missiles shelling on Ukraine where trust is they may have belief in world peace. 
+
+    The primary source of negativity not only comes from Ukraine war, many people around the world are concerned about their countries as Russia could extend the war beyond Ukraine and invade other countries. Also in the US, many people are against Biden, supporting the Trump administration. Not only in the US, but we can see many people from other countries are also supporting the trump administration. 
+    
+    The Supporting word is used most often because many people are coming forward in order to help refugees and provide sufficient fundraising for them. 
+    
+    
+# Discussions 
+
+      Since this data is collected in real-time, the analyses may differ every day according to several factors. Although we can see many of these tweets show that people are concerned about the war. The analysis is also limited in that the project focuses on tweets that are in the English language and thus fails to capture possible topics and sentiments of tweets in other languages. Future research should collect data over a period that helps to evaluate the exact situation.
